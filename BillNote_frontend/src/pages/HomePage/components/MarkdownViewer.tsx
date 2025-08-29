@@ -308,12 +308,14 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
                       // Enhanced image with zoom capability
                       img: ({ node, ...props }) =>{
 
-                        let src = baseURL +props.src
+                        // Only prefix baseURL when the src is a relative path.
+                        // If props.src is already an absolute URL (http://, https:// or //), keep it as-is.
+                        const rawSrc = String(props.src || '')
+                        const isAbsolute = /^(https?:)?\/\//i.test(rawSrc)
+                        const src = isAbsolute ? rawSrc : (baseURL + rawSrc)
                         props.src = src
 
-
                      return(
-
 
                       <div className="my-8 flex justify-center">
                           <Zoom>
