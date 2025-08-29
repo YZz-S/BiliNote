@@ -432,6 +432,16 @@ class NoteGenerator:
         try:
             logger.info("开始转写音频")
             transcript = self.transcriber.transcript(file_path=audio_file)
+            
+            # 检查转写结果是否为None
+            if transcript is None:
+                raise ValueError("转写器返回了空结果(None)")
+            
+            # 确保transcript是TranscriptResult类型
+            if not isinstance(transcript, TranscriptResult):
+                raise TypeError(f"转写器返回了错误的类型: {type(transcript)}, 期望是TranscriptResult")
+            
+            # 只有在transcript是正确类型时才缓存
             transcript_cache_file.write_text(json.dumps(asdict(transcript), ensure_ascii=False, indent=2), encoding="utf-8")
             logger.info(f"转写并缓存成功 ({transcript_cache_file})")
             return transcript
