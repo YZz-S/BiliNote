@@ -6,7 +6,12 @@ from app.gpt.utils import fix_markdown
 from app.models.transcriber_model import TranscriptSegment
 from datetime import timedelta
 from typing import List
+import logging
 
+logger = logging.getLogger(__name__)
+
+# 定义最大输入长度
+MAX_INPUT_LENGTH = 120000  # 留一些余量，避免精确边界问题
 
 class UniversalGPT(GPT):
     def __init__(self, client, model: str, temperature: float = 0.7):
@@ -29,7 +34,6 @@ class UniversalGPT(GPT):
         return [TranscriptSegment(**seg) if isinstance(seg, dict) else seg for seg in segments]
 
     def create_messages(self, segments: List[TranscriptSegment], **kwargs):
-
         content_text = generate_base_prompt(
             title=kwargs.get('title'),
             segment_text=self._build_segment_text(segments),
@@ -38,6 +42,13 @@ class UniversalGPT(GPT):
             style=kwargs.get('style'),
             extras=kwargs.get('extras'),
         )
+
+        # 检查并截断过长的输入文本
+        if len(content_text) > MAX_INPUT_LENGTH:
+            logger.warning(f"输入文本长度 {len(content_text)} 超过限制 {MAX_INPUT_LENGTH}，将进行截断处理")
+            # 保留提示词部分和前部分转录内容
+            content_text = self._truncate_content(content_text, MAX_INPUT_LENGTH)
+            logger.info(f"截断后文本长度: {len(content_text)}")
 
         # ⛳ 组装 content 数组，支持 text + image_url 混合
         content = [{"type": "text", "text": content_text}]
@@ -60,6 +71,29 @@ class UniversalGPT(GPT):
 
         return messages
 
+    def _truncate_content(self, content: str, max_length: int) -> str:
+        """
+        截断过长的内容，尽量保留提示词和前面的转录内容
+        """
+        # 简单实现：直接截断，但确保保留BASE_PROMPT的基本结构
+        lines = content.split('\n')
+        truncated_content = ""
+        current_length = 0
+        
+        for line in lines:
+            if current_length + len(line) + 1 > max_length:
+                # 添加说明文本表示内容已被截断
+                remaining_chars = max_length - current_length - 50  # 留出空间给提示信息
+                if remaining_chars > 0 and len(line) > remaining_chars:
+                    truncated_content += line[:remaining_chars] + "\n...\n[内容因长度限制已被截断]"
+                else:
+                    truncated_content += "\n...\n[内容因长度限制已被截断]"
+                break
+            truncated_content += line + "\n"
+            current_length += len(line) + 1
+            
+        return truncated_content
+
     def list_models(self):
         return self.client.models.list()
 
@@ -77,9 +111,18 @@ class UniversalGPT(GPT):
             style=source.style,
             extras=source.extras
         )
-        response = self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            temperature=0.7
-        )
-        return response.choices[0].message.content.strip()
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                temperature=0.7
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            # 检查是否是由于输入长度超限导致的错误
+            error_message = str(e)
+            if "Range of input length should be [1, 129024]" in error_message:
+                # 抛出自定义异常消息，以便前端可以识别并显示给用户
+                raise Exception("视频内容过长，超出模型处理限制。请尝试处理较短的视频或调整采样间隔。")
+            else:
+                raise e
