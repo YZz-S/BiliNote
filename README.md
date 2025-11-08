@@ -199,6 +199,17 @@ pnpm dev
 
 访问：`http://localhost:5173`
 
+### 🍪 Bilibili Cookie 配置
+
+由于 Bilibili 的 API 限制，直接下载视频可能会失败。为了解决这个问题，你需要提供自己的 Bilibili Cookie。
+
+1.  **获取 Cookie**: 你可以使用浏览器扩展程序（如 Chrome 的 `Get cookies.txt` 或 Firefox 的 `cookies.txt`）来导出你的 Bilibili Cookie。请确保导出为 Netscape 格式的 `cookies.txt` 文件。
+
+2.  **放置 Cookie 文件**: 将导出的 `cookies.txt` 文件重命名为 `bilibili-cookies.txt`，并将其放置在 `backend/data` 目录下。
+
+3.  **重启应用**: 重启 BiliNote 后端服务，程序将自动加载 Cookie 文件进行认证。
+
+
 ## ⚙️ 依赖说明
 ### 🎬 FFmpeg
 本项目依赖 ffmpeg 用于音频处理与转码，必须安装：

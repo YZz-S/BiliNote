@@ -41,6 +41,7 @@ class BilibiliDownloader(Downloader, ABC):
             ],
             'noplaylist': True,
             'quiet': False,
+            'cookiefile': os.path.join(get_data_dir(), 'bilibili-cookies.txt'),
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -91,6 +92,7 @@ class BilibiliDownloader(Downloader, ABC):
             'noplaylist': True,
             'quiet': False,
             'merge_output_format': 'mp4',  # 确保合并成 mp4
+            'cookiefile': os.path.join(get_data_dir(), 'bilibili-cookies.txt'),
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
