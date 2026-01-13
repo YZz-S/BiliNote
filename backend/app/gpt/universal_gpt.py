@@ -102,15 +102,79 @@ class UniversalGPT(GPT):
         self.link = source.link
         source.segment = self.ensure_segments_type(source.segment)
 
-        messages = self.create_messages(
-            source.segment,
+        full_text = generate_base_prompt(
             title=source.title,
+            segment_text=self._build_segment_text(source.segment),
             tags=source.tags,
-            video_img_urls=source.video_img_urls,
             _format=source._format,
             style=source.style,
-            extras=source.extras
+            extras=source.extras,
         )
+        if len(full_text) > MAX_INPUT_LENGTH:
+            chunks = []
+            current = []
+            base_args = {
+                "title": source.title,
+                "tags": source.tags,
+                "_format": source._format,
+                "style": source.style,
+                "extras": source.extras,
+            }
+            for seg in source.segment:
+                test_segments = current + [seg]
+                test_text = generate_base_prompt(
+                    title=base_args["title"],
+                    segment_text=self._build_segment_text(test_segments),
+                    tags=base_args["tags"],
+                    _format=base_args["_format"],
+                    style=base_args["style"],
+                    extras=base_args["extras"],
+                )
+                if len(test_text) <= MAX_INPUT_LENGTH:
+                    current = test_segments
+                else:
+                    if current:
+                        chunks.append(current)
+                    current = [seg]
+            if current:
+                chunks.append(current)
+            summaries = []
+            for segs in chunks:
+                msgs = self.create_messages(
+                    segs,
+                    title=source.title,
+                    tags=source.tags,
+                    video_img_urls=source.video_img_urls,
+                    _format=source._format,
+                    style=source.style,
+                    extras=source.extras,
+                )
+                resp = self.client.chat.completions.create(
+                    model=self.model, messages=msgs, temperature=0.7
+                )
+                summaries.append(resp.choices[0].message.content.strip())
+            combined_segments = [
+                TranscriptSegment(start=0, text=s) for s in summaries
+            ]
+            messages = self.create_messages(
+                combined_segments,
+                title=source.title,
+                tags=source.tags,
+                video_img_urls=[],
+                _format=source._format,
+                style=source.style,
+                extras=source.extras,
+            )
+        else:
+            messages = self.create_messages(
+                source.segment,
+                title=source.title,
+                tags=source.tags,
+                video_img_urls=source.video_img_urls,
+                _format=source._format,
+                style=source.style,
+                extras=source.extras
+            )
         try:
             response = self.client.chat.completions.create(
                 model=self.model,
@@ -119,10 +183,8 @@ class UniversalGPT(GPT):
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            # 检查是否是由于输入长度超限导致的错误
             error_message = str(e)
-            if "Range of input length should be [1, 129024]" in error_message:
-                # 抛出自定义异常消息，以便前端可以识别并显示给用户
-                raise Exception("视频内容过长，超出模型处理限制。请尝试处理较短的视频或调整采样间隔。")
+            if "Range of input length should be [1" in error_message:
+                raise Exception("视频内容过长，超出模型处理限制。请尝试缩短内容或降低采样密度。")
             else:
                 raise e
