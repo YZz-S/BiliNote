@@ -121,10 +121,13 @@ async def upload(file: UploadFile = File(...)):
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     file_location = os.path.join(UPLOAD_DIR, file.filename)
 
-    with open(file_location, "wb+") as f:
-        f.write(await file.read())
+    with open(file_location, "wb") as f:
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            f.write(chunk)
 
-    # 假设你静态目录挂载了 /uploads
     return R.success({"url": f"/uploads/{file.filename}"})
 
 
