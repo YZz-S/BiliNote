@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useTaskStore } from '@/store/taskStore'
 import { get_task_status } from '@/services/note.ts'
 import toast from 'react-hot-toast'
+import { notifyTaskSuccess, notifyTaskFailed } from '@/utils/notification'
 
 export const useTaskPolling = (interval = 3000) => {
   const tasks = useTaskStore(state => state.tasks)
@@ -32,6 +33,11 @@ export const useTaskPolling = (interval = 3000) => {
             if (status === 'SUCCESS') {
               const { markdown, transcript, audio_meta } = res.result
               toast.success('笔记生成成功')
+              notifyTaskSuccess({
+                taskId: task.id,
+                title: audio_meta?.title,
+                duration: audio_meta?.duration,
+              })
               updateTaskContent(task.id, {
                 status,
                 markdown,
@@ -49,6 +55,8 @@ export const useTaskPolling = (interval = 3000) => {
           console.error('❌ 任务轮询失败：', e)
           // toast.error(`生成失败 ${e.message || e}`)
           updateTaskContent(task.id, { status: 'FAILED' })
+          const msg = (e && (e.msg || e.message)) || ''
+          notifyTaskFailed({ taskId: task.id, message: msg })
           // removeTask(task.id)
         }
       }
