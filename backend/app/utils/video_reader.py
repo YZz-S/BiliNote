@@ -3,6 +3,7 @@ import os
 import re
 import subprocess
 import ffmpeg
+from fractions import Fraction
 from PIL import Image, ImageDraw, ImageFont
 
 from app.utils.logger import get_logger
@@ -45,23 +46,86 @@ class VideoReader:
 
     def extract_frames(self, max_frames=1000) -> list[str]:
 
+        os.makedirs(self.frame_dir, exist_ok=True)
+        image_paths = []
+        duration_value = None
         try:
-            os.makedirs(self.frame_dir, exist_ok=True)
-            duration = float(ffmpeg.probe(self.video_path)["format"]["duration"])
-            timestamps = [i for i in range(0, int(duration), self.frame_interval)][:max_frames]
+            probe = ffmpeg.probe(self.video_path)
+            fmt = probe.get("format", {})
+            dur = fmt.get("duration")
+            if dur is not None:
+                try:
+                    duration_value = float(dur)
+                except Exception:
+                    duration_value = None
+            if duration_value is None:
+                streams = probe.get("streams", [])
+                vstream = next((s for s in streams if s.get("codec_type") == "video"), None)
+                if vstream:
+                    vdur = vstream.get("duration")
+                    if vdur is not None:
+                        try:
+                            duration_value = float(vdur)
+                        except Exception:
+                            duration_value = None
+                    if duration_value is None:
+                        nb = vstream.get("nb_frames")
+                        rate = vstream.get("avg_frame_rate")
+                        if nb and rate and rate != "0/0":
+                            try:
+                                fps = float(Fraction(rate))
+                            except Exception:
+                                try:
+                                    num, den = rate.split("/")
+                                    fps = float(num) / float(den) if float(den) != 0 else 0.0
+                                except Exception:
+                                    fps = 0.0
+                            if fps > 0:
+                                try:
+                                    duration_value = float(nb) / fps
+                                except Exception:
+                                    duration_value = None
+        except Exception as e:
+            logger.warning(f"获取视频时长失败，使用回退策略：{str(e)}")
+            duration_value = None
 
-            image_paths = []
-            for ts in timestamps:
+        if duration_value is None or duration_value <= 0:
+            logger.warning("视频时长不可用，按固定间隔尝试抽取最多指定帧数")
+            timestamps = [i * self.frame_interval for i in range(0, max_frames)]
+        else:
+            timestamps = [i for i in range(0, int(duration_value), self.frame_interval)][:max_frames]
+
+        for ts in timestamps:
+            try:
                 time_label = self.format_time(ts)
                 output_path = os.path.join(self.frame_dir, f"frame_{time_label}.jpg")
-                cmd = ["ffmpeg", "-ss", str(ts), "-i", self.video_path, "-frames:v", "1", "-q:v", "2", "-y", output_path,
-                       "-hide_banner", "-loglevel", "error"]
+                cmd = [
+                    "ffmpeg",
+                    "-ss",
+                    str(ts),
+                    "-i",
+                    self.video_path,
+                    "-frames:v",
+                    "1",
+                    "-q:v",
+                    "2",
+                    "-y",
+                    output_path,
+                    "-hide_banner",
+                    "-loglevel",
+                    "error",
+                ]
                 subprocess.run(cmd, check=True)
                 image_paths.append(output_path)
-            return image_paths
-        except Exception as e:
-            logger.error(f"分割帧发生错误：{str(e)}")
+            except subprocess.CalledProcessError:
+                break
+            except Exception as e:
+                logger.warning(f"单帧抽取失败：{str(e)}")
+                break
+
+        if not image_paths:
             raise ValueError("视频处理失败")
+        return image_paths
 
     def group_images(self) -> list[list[str]]:
         image_files = [os.path.join(self.frame_dir, f) for f in os.listdir(self.frame_dir) if
