@@ -119,7 +119,7 @@ uvloop==0.21.0; sys_platform != "win32"
 vine==5.1.0
 watchfiles==1.0.4
 wcwidth==0.2.13
-weasyprint==65.1
+weasyprint==68.0
 webencodings==0.5.1
 websockets==15.0.1
 yarl==1.19.0
