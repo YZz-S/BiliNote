@@ -45,6 +45,8 @@ export function MarkdownHeader({
   noteStyles,
   onCopy,
   onDownload,
+  onDownloadOriginalMd,
+  onDownloadSrt,
   createAt,
   showTranscribe,
   setShowTranscribe,
