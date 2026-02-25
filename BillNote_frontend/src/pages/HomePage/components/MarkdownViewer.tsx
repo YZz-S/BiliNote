@@ -23,6 +23,7 @@ import { noteStyles } from '@/constant/note.ts'
 import { MarkdownHeader } from '@/pages/HomePage/components/MarkdownHeader.tsx'
 import TranscriptViewer from '@/pages/HomePage/components/transcriptViewer.tsx'
 import MarkmapEditor from '@/pages/HomePage/components/MarkmapComponent.tsx'
+import { buildSrtFromTranscript, buildMarkdownFromTranscript } from '@/utils/exporters.ts'
 
 interface VersionNote {
   ver_id: string
@@ -140,6 +141,32 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
     link.click()
     document.body.removeChild(link)
   }
+  const handleDownloadTranscriptMd = () => {
+    const task = getCurrentTask()
+    if (!task) return
+    const name = task.audioMeta.title || 'transcript'
+    const content = buildMarkdownFromTranscript(task.transcript)
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${name}.transcript.md`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+  const handleDownloadTranscriptSrt = () => {
+    const task = getCurrentTask()
+    if (!task) return
+    const name = task.audioMeta.title || 'subtitles'
+    const content = buildSrtFromTranscript(task.transcript)
+    const blob = new Blob([content], { type: 'application/x-subrip;charset=utf-8' })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = `${name}.srt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
 
   if (status === 'loading') {
     return (
@@ -194,6 +221,8 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
         noteStyles={noteStyles}
         onCopy={handleCopy}
         onDownload={handleDownload}
+        onDownloadOriginalMd={handleDownloadTranscriptMd}
+        onDownloadSrt={handleDownloadTranscriptSrt}
         createAt={createTime}
         showTranscribe={showTranscribe}
         setShowTranscribe={setShowTranscribe}

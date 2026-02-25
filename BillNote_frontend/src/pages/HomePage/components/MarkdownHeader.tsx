@@ -26,8 +26,13 @@ interface NoteHeaderProps {
   noteStyles: { value: string; label: string }[]
   onCopy: () => void
   onDownload: () => void
+  onDownloadOriginalMd: () => void
+  onDownloadSrt: () => void
   createAt?: string | Date
+  showTranscribe: boolean
   setShowTranscribe: (show: boolean) => void
+  viewMode: 'map' | 'preview'
+  setViewMode: (m: 'map' | 'preview') => void
 }
 
 export function MarkdownHeader({
@@ -163,6 +168,28 @@ export function MarkdownHeader({
               </Button>
             </TooltipTrigger>
             <TooltipContent>下载为 Markdown 文件</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={onDownloadOriginalMd} variant="ghost" size="sm" className="h-8 px-2">
+                <Download className="mr-1.5 h-4 w-4" />
+                <span className="text-sm">导出原文 .md</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>下载原文为 Markdown</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button onClick={onDownloadSrt} variant="ghost" size="sm" className="h-8 px-2">
+                <Download className="mr-1.5 h-4 w-4" />
+                <span className="text-sm">导出原文 .srt</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>下载原文为 SRT 字幕</TooltipContent>
           </Tooltip>
         </TooltipProvider>
         <TooltipProvider>
