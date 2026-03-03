@@ -19,6 +19,10 @@ from events import register_handler
 from ffmpeg_helper import ensure_ffmpeg_or_raise
 
 logger = get_logger(__name__)
+# 优先从根目录读取 .env，再读取当前目录
+from pathlib import Path
+root_env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(root_env_path)
 load_dotenv()
 
 # 读取 .env 中的路径
@@ -45,11 +49,18 @@ async def lifespan(app: FastAPI):
     yield
 
 app = create_app(lifespan=lifespan)
+
+# 从环境变量动态读取端口，默认 3015 和 8492
+frontend_port = os.getenv("VITE_FRONTEND_PORT", os.getenv("FRONTEND_PORT", "3015"))
+backend_port = int(os.getenv("BACKEND_PORT", 8492))
+backend_host = os.getenv("BACKEND_HOST", "0.0.0.0")
+
 origins = [
     "http://localhost",
     "http://127.0.0.1",
     "http://tauri.localhost",
-    "http://localhost:3015",
+    f"http://localhost:{frontend_port}",
+    f"http://127.0.0.1:{frontend_port}",
 ]
 
 app.add_middleware(
@@ -72,7 +83,5 @@ app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("BACKEND_PORT", 8483))
-    host = os.getenv("BACKEND_HOST", "0.0.0.0")
-    logger.info(f"Starting server on {host}:{port}")
-    uvicorn.run(app, host=host, port=port, reload=False)
+    logger.info(f"Starting server on {backend_host}:{backend_port}")
+    uvicorn.run(app, host=backend_host, port=backend_port, reload=False)
