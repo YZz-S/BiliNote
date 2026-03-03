@@ -8,6 +8,7 @@ from app.downloaders.base import Downloader, DownloadQuality, QUALITY_MAP
 from app.models.notes_model import AudioDownloadResult
 from app.utils.path_helper import get_data_dir
 from app.utils.url_parser import extract_video_id
+from app.services.cookie_manager import CookieConfigManager
 
 
 class BilibiliDownloader(Downloader, ABC):
@@ -42,6 +43,17 @@ class BilibiliDownloader(Downloader, ABC):
 
         cookie_path = os.path.join(get_data_dir(), 'bilibili-cookies.txt')
 
+        cm = CookieConfigManager()
+        cookie_str = cm.get('bilibili')
+        if cookie_str:
+            is_netscape = ('\t' in cookie_str) or ('\n' in cookie_str) or cookie_str.strip().startswith('#')
+            if is_netscape:
+                os.makedirs(os.path.dirname(cookie_path), exist_ok=True)
+                with open(cookie_path, 'w', encoding='utf-8') as f:
+                    f.write(cookie_str)
+            else:
+                headers['Cookie'] = cookie_str
+
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
             'outtmpl': output_path,
@@ -67,7 +79,7 @@ class BilibiliDownloader(Downloader, ABC):
                 msg = str(e)
                 if "412" in msg or "Precondition Failed" in msg:
                     raise Exception(
-                        f"B站访问被拒绝(HTTP 412)。请在 {cookie_path} 配置浏览器导出的 cookies.txt，或稍后重试。"
+                        f"B站访问被拒绝(HTTP 412)。请在下载设置配置 B 站 Cookies，或将 Netscape 格式写入 {cookie_path}，稍后重试。"
                     )
                 raise
             video_id = info.get("id")
@@ -123,6 +135,17 @@ class BilibiliDownloader(Downloader, ABC):
 
         cookie_path = os.path.join(get_data_dir(), 'bilibili-cookies.txt')
 
+        cm = CookieConfigManager()
+        cookie_str = cm.get('bilibili')
+        if cookie_str:
+            is_netscape = ('\t' in cookie_str) or ('\n' in cookie_str) or cookie_str.strip().startswith('#')
+            if is_netscape:
+                os.makedirs(os.path.dirname(cookie_path), exist_ok=True)
+                with open(cookie_path, 'w', encoding='utf-8') as f:
+                    f.write(cookie_str)
+            else:
+                headers['Cookie'] = cookie_str
+
         ydl_opts = {
             'format': 'bv*[ext=mp4]/bestvideo+bestaudio/best',
             'outtmpl': output_path,
@@ -142,7 +165,7 @@ class BilibiliDownloader(Downloader, ABC):
                 msg = str(e)
                 if "412" in msg or "Precondition Failed" in msg:
                     raise Exception(
-                        f"B站访问被拒绝(HTTP 412)。请在 {cookie_path} 配置浏览器导出的 cookies.txt，或稍后重试。"
+                        f"B站访问被拒绝(HTTP 412)。请在下载设置配置 B 站 Cookies，或将 Netscape 格式写入 {cookie_path}，稍后重试。"
                     )
                 raise
             video_id = info.get("id")
