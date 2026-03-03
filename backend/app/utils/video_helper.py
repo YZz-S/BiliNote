@@ -7,9 +7,14 @@ import os
 import uuid
 load_dotenv()
 api_path = os.getenv("API_BASE_URL", "http://localhost")
-BACKEND_PORT= os.getenv("BACKEND_PORT", 8483)
-
-BACKEND_BASE_URL = f"{api_path}:{BACKEND_PORT}"
+BACKEND_PORT = os.getenv("BACKEND_PORT", "8483")
+from urllib.parse import urlparse
+parsed = urlparse(api_path)
+scheme = parsed.scheme or "http"
+netloc = parsed.netloc or parsed.path or "localhost"
+host, sep, port = netloc.partition(":")
+base_netloc = netloc if port else f"{host}:{BACKEND_PORT}"
+BACKEND_BASE_URL = f"{scheme}://{base_netloc}"
 
 from typing import Optional
 def generate_screenshot(video_path: str, output_dir: str, timestamp: int, index: int) -> str:
