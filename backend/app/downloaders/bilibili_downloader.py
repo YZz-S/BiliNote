@@ -6,8 +6,8 @@ import yt_dlp
 
 from app.downloaders.base import Downloader, DownloadQuality, QUALITY_MAP
 from app.models.notes_model import AudioDownloadResult
-from app.utils.path_helper import get_data_dir
-from app.utils.url_parser import extract_video_id
+from app.utils.path_helper import get_data_dir, PROJECT_ROOT
+from app.utils.url_parser import extract_video_id, resolve_bilibili_short_url
 from app.services.cookie_manager import CookieConfigManager
 
 
@@ -36,12 +36,24 @@ class BilibiliDownloader(Downloader, ABC):
             'User-Agent': (
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/120.0.0.0 Safari/537.36'
+                'Chrome/126.0.0.0 Safari/537.36'
             ),
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-User': '?1',
+            'Sec-Fetch-Dest': 'document',
+            'sec-ch-ua': '"Chromium";v="126", "Not=A?Brand";v="8", "Microsoft Edge";v="126"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
         }
 
         cookie_path = os.path.join(get_data_dir(), 'bilibili-cookies.txt')
+        cookiefile_path = None
 
         cm = CookieConfigManager()
         cookie_str = cm.get('bilibili')
@@ -51,8 +63,31 @@ class BilibiliDownloader(Downloader, ABC):
                 os.makedirs(os.path.dirname(cookie_path), exist_ok=True)
                 with open(cookie_path, 'w', encoding='utf-8') as f:
                     f.write(cookie_str)
+                cookiefile_path = cookie_path
             else:
                 headers['Cookie'] = cookie_str
+        else:
+            repo_root = os.path.abspath(os.path.join(PROJECT_ROOT, '..'))
+            for p in [
+                cookie_path,
+                os.path.join(PROJECT_ROOT, 'cookie.txt'),
+                os.path.join(PROJECT_ROOT, 'bilibili-cookies.txt'),
+                os.path.join(repo_root, 'cookie.txt'),
+                os.path.join(repo_root, 'bilibili-cookies.txt'),
+            ]:
+                if os.path.exists(p):
+                    cookiefile_path = p
+                    break
+
+        # 若是 b23.tv 短链，先解析成真实的 B 站链接，避免在 b23 域名阶段触发 412
+        if "b23.tv" in video_url:
+            real = resolve_bilibili_short_url(video_url)
+            if real:
+                video_url = real
+
+        if "bilibili.com" in video_url:
+            headers['Referer'] = video_url
+            headers['Origin'] = 'https://www.bilibili.com'
 
         ydl_opts = {
             'format': 'bestaudio[ext=m4a]/bestaudio/best',
@@ -69,8 +104,8 @@ class BilibiliDownloader(Downloader, ABC):
             'http_headers': headers,
         }
 
-        if os.path.exists(cookie_path):
-            ydl_opts['cookiefile'] = cookie_path
+        if cookiefile_path and os.path.exists(cookiefile_path):
+            ydl_opts['cookiefile'] = cookiefile_path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
@@ -112,6 +147,11 @@ class BilibiliDownloader(Downloader, ABC):
             output_dir = get_data_dir()
         os.makedirs(output_dir, exist_ok=True)
         print("video_url",video_url)
+        # 若是 b23.tv 短链，先解析真实链接，减少短链阶段的反爬拦截
+        if "b23.tv" in video_url:
+            real = resolve_bilibili_short_url(video_url)
+            if real:
+                video_url = real
         video_id=extract_video_id(video_url, "bilibili")
         video_path = os.path.join(output_dir, f"{video_id}.mp4")
         if os.path.exists(video_path):
@@ -128,12 +168,27 @@ class BilibiliDownloader(Downloader, ABC):
             'User-Agent': (
                 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                 'AppleWebKit/537.36 (KHTML, like Gecko) '
-                'Chrome/120.0.0.0 Safari/537.36'
+                'Chrome/126.0.0.0 Safari/537.36'
             ),
             'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            'Sec-Fetch-Site': 'same-origin',
+            'Sec-Fetch-Mode': 'navigate',
+            'Sec-Fetch-User': '?1',
+            'Sec-Fetch-Dest': 'document',
+            'sec-ch-ua': '"Chromium";v="126", "Not=A?Brand";v="8", "Microsoft Edge";v="126"',
+            'sec-ch-ua-mobile': '?0',
+            'sec-ch-ua-platform': '"Windows"',
         }
+        if "bilibili.com" in video_url:
+            headers['Referer'] = video_url
+            headers['Origin'] = 'https://www.bilibili.com'
 
         cookie_path = os.path.join(get_data_dir(), 'bilibili-cookies.txt')
+        cookiefile_path = None
 
         cm = CookieConfigManager()
         cookie_str = cm.get('bilibili')
@@ -143,8 +198,21 @@ class BilibiliDownloader(Downloader, ABC):
                 os.makedirs(os.path.dirname(cookie_path), exist_ok=True)
                 with open(cookie_path, 'w', encoding='utf-8') as f:
                     f.write(cookie_str)
+                cookiefile_path = cookie_path
             else:
                 headers['Cookie'] = cookie_str
+        else:
+            repo_root = os.path.abspath(os.path.join(PROJECT_ROOT, '..'))
+            for p in [
+                cookie_path,
+                os.path.join(PROJECT_ROOT, 'cookie.txt'),
+                os.path.join(PROJECT_ROOT, 'bilibili-cookies.txt'),
+                os.path.join(repo_root, 'cookie.txt'),
+                os.path.join(repo_root, 'bilibili-cookies.txt'),
+            ]:
+                if os.path.exists(p):
+                    cookiefile_path = p
+                    break
 
         ydl_opts = {
             'format': 'bv*[ext=mp4]/bestvideo+bestaudio/best',
@@ -155,8 +223,8 @@ class BilibiliDownloader(Downloader, ABC):
             'http_headers': headers,
         }
 
-        if os.path.exists(cookie_path):
-            ydl_opts['cookiefile'] = cookie_path
+        if cookiefile_path and os.path.exists(cookiefile_path):
+            ydl_opts['cookiefile'] = cookiefile_path
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             try:
