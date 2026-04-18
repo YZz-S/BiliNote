@@ -59,11 +59,11 @@ class ConfigManager:
         return {
             'BACKEND_PORT': ConfigItem(
                 key='BACKEND_PORT',
-                value='8492',
+                value='8483',
                 description='后端服务端口',
                 is_required=True,
                 data_type='int',
-                default_value='8492'
+                default_value='8483'
             ),
             'FRONTEND_PORT': ConfigItem(
                 key='FRONTEND_PORT', 
@@ -91,7 +91,7 @@ class ConfigManager:
             ),
             'VITE_API_BASE_URL': ConfigItem(
                 key='VITE_API_BASE_URL',
-                value='http://127.0.0.1:8492',
+                value='http://127.0.0.1:8483',
                 description='前端访问后端API的基础URL',
                 is_required=True,
                 data_type='string',
@@ -378,14 +378,14 @@ class ConfigManager:
                 "# 自动生成于 " + datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "",
                 "# 通用端口配置",
-                "BACKEND_PORT=8492 # 后端端口",
+                "BACKEND_PORT=8483 # 后端端口",
                 "FRONTEND_PORT=3015",
                 "BACKEND_HOST=0.0.0.0 # 默认为 0.0.0.0，表示监听所有 IP 地址 不建议动",
                 "APP_PORT=3015 # docker 部署时用",
                 "",
                 "# 前端访问后端用 (开发环境使用)",
-                "VITE_API_BASE_URL=http://127.0.0.1:8492",
-                "VITE_SCREENSHOT_BASE_URL=http://127.0.0.1:8492/static/screenshots",
+                "VITE_API_BASE_URL=http://127.0.0.1:8483",
+                "VITE_SCREENSHOT_BASE_URL=http://127.0.0.1:8483/static/screenshots",
                 "VITE_FRONTEND_PORT=3015",
                 "",
                 "# 生产环境配置",

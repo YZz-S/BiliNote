@@ -50,9 +50,9 @@ async def lifespan(app: FastAPI):
 
 app = create_app(lifespan=lifespan)
 
-# 从环境变量动态读取端口，默认 3015 和 8492
+# 从环境变量动态读取端口，默认 3015 和 8483
 frontend_port = os.getenv("VITE_FRONTEND_PORT", os.getenv("FRONTEND_PORT", "3015"))
-backend_port = int(os.getenv("BACKEND_PORT", 8492))
+backend_port = int(os.getenv("BACKEND_PORT", 8483))
 backend_host = os.getenv("BACKEND_HOST", "0.0.0.0")
 
 origins = [

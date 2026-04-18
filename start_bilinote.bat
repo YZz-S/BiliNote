@@ -7,7 +7,7 @@ echo.
 
 REM Read variables from .env file
 set "CONDA_ENV_NAME="
-set "BACKEND_PORT=8492"
+set "BACKEND_PORT=8483"
 set "VITE_FRONTEND_PORT=3015"
 
 if exist ".env" (

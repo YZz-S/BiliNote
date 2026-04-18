@@ -7,7 +7,7 @@ import tailwindcss from '@tailwindcss/vite'
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd() + '/../')
 
-  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:8492'
+  const apiBaseUrl = env.VITE_API_BASE_URL || 'http://localhost:8483'
   const port = Number(env.VITE_FRONTEND_PORT) || 3015
 
   return {
