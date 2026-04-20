@@ -9,8 +9,6 @@ import Idle from '@/components/Lottie/Idle.tsx'
 import StepBar from '@/pages/HomePage/components/StepBar.tsx'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { atomDark as codeStyle } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import Zoom from 'react-medium-image-zoom'
-import 'react-medium-image-zoom/dist/styles.css'
 import gfm from 'remark-gfm'
 import remarkMath from 'remark-math'
 import rehypeKatex from 'rehype-katex'
@@ -334,7 +332,7 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
                         )
                       },
 
-                      // Enhanced image with zoom capability
+                      // Keep image output phrasing-content safe inside <p> to avoid invalid nesting.
                       img: ({ node, ...props }) =>{
 
                         // Only prefix baseURL when the src is a relative path.
@@ -345,16 +343,11 @@ const MarkdownViewer: FC<MarkdownViewerProps> = ({ status }) => {
                         props.src = src
 
                      return(
-
-                      <div className="my-8 flex justify-center">
-                          <Zoom>
-                            <img
-                              {...props}
-                              className="max-w-full cursor-zoom-in rounded-lg object-cover shadow-md transition-all hover:shadow-lg"
-                              style={{ maxHeight: '500px' }}
-                            />
-                          </Zoom>
-                        </div>
+                        <img
+                          {...props}
+                          className="my-8 mx-auto block max-w-full rounded-lg object-cover shadow-md transition-all hover:shadow-lg"
+                          style={{ maxHeight: '500px' }}
+                        />
                       )},
 
                       // Better strong/bold text
