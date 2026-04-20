@@ -80,7 +80,7 @@ pydantic==2.11.2
 pydantic_core==2.33.1
 pydyf==0.11.0
 PyExecJS==1.5.1
-Pygments==2.19.1
+Pygments==2.20.0
 pyinstaller==6.13.0
 pyinstaller-hooks-contrib==2025.2
 PyMuPDF==1.25.3
