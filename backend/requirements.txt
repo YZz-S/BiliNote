@@ -53,7 +53,7 @@ jiter==0.9.0
 kombu==5.5.2
 lxml==5.4.0
 macholib==1.16.3
-Markdown==3.8
+Markdown==3.8.1
 markdown-it-py==3.0.0
 markdown_pdf==1.7
 MarkupSafe==3.0.2
