@@ -65,7 +65,7 @@ networkx==3.3
 numpy==2.2.4
 onnxruntime==1.21.0
 openai==1.70.0
-orjson==3.10.16
+orjson==3.11.6
 packaging==24.2
 pdfkit==1.0.0
 pefile==2023.2.7
