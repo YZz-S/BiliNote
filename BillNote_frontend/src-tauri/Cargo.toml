@@ -25,7 +25,8 @@ tauri = { version = "2.7.0", features = ["devtools"] }
 tauri-plugin-log = "2.0"
 tauri-plugin-shell = "2"
 
+# Security override for rand vulnerability
+rand = "0.9"
+
 [package.metadata.tauri.bundle.macOS]
 frameworks = ["bin/BiliNoteBackend/_internal/"]
-
-
