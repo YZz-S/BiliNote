@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/select.tsx' // ⚡新增 fetchModels
 import { ModelSelector } from '@/components/Form/modelForm/ModelSelector.tsx'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert.tsx'
-import { Tags } from 'lucide-react'
+import { Trash2 } from 'lucide-react'
 import { Tag } from 'antd'
 import { useModelStore } from '@/store/modelStore'
 
@@ -63,6 +63,7 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
   const loadProviderById = useProviderStore(state => state.loadProviderById)
   const updateProvider = useProviderStore(state => state.updateProvider)
   const addNewProvider = useProviderStore(state => state.addNewProvider)
+  const deleteProvider = useProviderStore(state => state.deleteProvider)
   const [loading, setLoading] = useState(true)
   const [testing, setTesting] = useState(false)
   const [isBuiltIn, setIsBuiltIn] = useState(false)
@@ -135,6 +136,18 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
 
     } catch (e) {
       toast.error('删除异常')
+    }
+  }
+  const handleDeleteProvider = async () => {
+    if (!id || isBuiltIn) return
+    if (!window.confirm('确定要删除这个供应商吗？该供应商下已保存的模型也会一起删除。')) return
+
+    try {
+      await deleteProvider(id)
+      toast.success('删除供应商成功')
+      navigate('/settings/model')
+    } catch (error) {
+      toast.error('删除供应商失败')
     }
   }
   // 测试连通性
@@ -283,9 +296,17 @@ const ProviderForm = ({ isCreate = false }: { isCreate?: boolean }) => {
             )}
           />
           <div className="pt-2">
-            <Button type="submit" disabled={!providerForm.formState.isDirty}>
-              {isEditMode ? '保存修改' : '保存创建'}
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button type="submit" disabled={!providerForm.formState.isDirty}>
+                {isEditMode ? '保存修改' : '保存创建'}
+              </Button>
+              {isEditMode && !isBuiltIn && (
+                <Button type="button" variant="destructive" onClick={handleDeleteProvider}>
+                  <Trash2 />
+                  删除供应商
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </Form>
