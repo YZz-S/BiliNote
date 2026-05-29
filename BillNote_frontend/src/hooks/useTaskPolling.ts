@@ -7,8 +7,6 @@ import { notifyTaskSuccess, notifyTaskFailed } from '@/utils/notification'
 export const useTaskPolling = (interval = 3000) => {
   const tasks = useTaskStore(state => state.tasks)
   const updateTaskContent = useTaskStore(state => state.updateTaskContent)
-  const updateTaskStatus = useTaskStore(state => state.updateTaskStatus)
-  const removeTask = useTaskStore(state => state.removeTask)
 
   const tasksRef = useRef(tasks)
 
@@ -27,11 +25,20 @@ export const useTaskPolling = (interval = 3000) => {
         try {
           console.log('🔄 正在轮询任务：', task.id)
           const res = await get_task_status(task.id)
-          const { status } = res
+          const { status, result, message } = res
 
           if (status && status !== task.status) {
             if (status === 'SUCCESS') {
-              const { markdown, transcript, audio_meta } = res.result
+              if (!result?.markdown || !result?.transcript || !result?.audio_meta) {
+                const errorMessage = message || '任务状态异常：已完成但结果数据不完整'
+                console.error(`❌ 任务 ${task.id} 返回成功但结果缺失：`, res)
+                updateTaskContent(task.id, { status: 'FAILED' })
+                toast.error(errorMessage)
+                notifyTaskFailed({ taskId: task.id, message: errorMessage })
+                continue
+              }
+
+              const { markdown, transcript, audio_meta } = result
               toast.success('笔记生成成功')
               notifyTaskSuccess({
                 taskId: task.id,
@@ -53,11 +60,9 @@ export const useTaskPolling = (interval = 3000) => {
           }
         } catch (e) {
           console.error('❌ 任务轮询失败：', e)
-          // toast.error(`生成失败 ${e.message || e}`)
           updateTaskContent(task.id, { status: 'FAILED' })
           const msg = (e && (e.msg || e.message)) || ''
           notifyTaskFailed({ taskId: task.id, message: msg })
-          // removeTask(task.id)
         }
       }
     }, interval)
