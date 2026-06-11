@@ -73,6 +73,34 @@ def save_note_to_file(task_id: str, note):
         json.dump(asdict(note), f, ensure_ascii=False, indent=2)
 
 
+def build_note_result_from_cache(task_id: str):
+    base_dir = Path(NOTE_OUTPUT_DIR)
+    markdown_path = base_dir / f"{task_id}_markdown.md"
+    transcript_path = base_dir / f"{task_id}_transcript.json"
+    audio_meta_path = base_dir / f"{task_id}_audio.json"
+
+    if not (markdown_path.exists() and transcript_path.exists() and audio_meta_path.exists()):
+        return None
+
+    with markdown_path.open("r", encoding="utf-8") as markdown_file:
+        markdown = markdown_file.read()
+
+    with transcript_path.open("r", encoding="utf-8") as transcript_file:
+        transcript = json.load(transcript_file)
+
+    with audio_meta_path.open("r", encoding="utf-8") as audio_meta_file:
+        audio_meta = json.load(audio_meta_file)
+
+    if not markdown.strip():
+        return None
+
+    return {
+        "markdown": markdown,
+        "transcript": transcript,
+        "audio_meta": audio_meta,
+    }
+
+
 def run_note_task(task_id: str, video_url: str, platform: str, quality: DownloadQuality,
                   link: bool = False, screenshot: bool = False, model_name: str = None, provider_id: str = None,
                   _format: list = None, style: str = None, extras: str = None, video_understanding: bool = False,
@@ -100,9 +128,22 @@ def run_note_task(task_id: str, video_url: str, platform: str, quality: Download
     )
     logger.info(f"Note generated: {task_id}")
     if not note or not note.markdown:
-        logger.warning(f"任务 {task_id} 执行失败，跳过保存")
+        message = "任务结果为空，未生成有效笔记内容"
+        logger.warning(f"任务 {task_id} 执行失败：{message}")
+        NoteGenerator()._update_status(task_id, TaskStatus.FAILED, message=message)
         return
-    save_note_to_file(task_id, note)
+    try:
+        save_note_to_file(task_id, note)
+    except Exception as exc:
+        logger.error(f"任务 {task_id} 保存结果文件失败：{exc}", exc_info=True)
+        NoteGenerator()._update_status(
+            task_id,
+            TaskStatus.FAILED,
+            message=f"保存结果文件失败: {exc}",
+        )
+        return
+
+    NoteGenerator()._update_status(task_id, TaskStatus.SUCCESS)
 
 
 
@@ -187,12 +228,22 @@ def get_task_status(task_id: str):
                     "task_id": task_id
                 })
             else:
-                # 理论上不会出现，保险处理
-                return R.success({
-                    "status": TaskStatus.PENDING.value,
-                    "message": "任务完成，但结果文件未找到",
-                    "task_id": task_id
-                })
+                fallback_result = build_note_result_from_cache(task_id)
+                if fallback_result:
+                    with open(result_path, "w", encoding="utf-8") as result_file:
+                        json.dump(fallback_result, result_file, ensure_ascii=False, indent=2)
+                    logger.warning(f"任务 {task_id} 结果文件缺失，已通过缓存重建")
+                    return R.success({
+                        "status": status,
+                        "result": fallback_result,
+                        "message": "结果文件缺失，已通过缓存自动恢复",
+                        "task_id": task_id
+                    })
+
+                message = "任务状态异常：已标记成功但结果文件缺失"
+                NoteGenerator()._update_status(task_id, TaskStatus.FAILED, message=message)
+                logger.error(f"任务 {task_id} 状态异常：{message}")
+                return R.error(message, code=500)
 
         if status == TaskStatus.FAILED.value:
             return R.error(message or "任务失败", code=500)

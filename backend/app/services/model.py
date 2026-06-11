@@ -1,6 +1,12 @@
 
 
-from app.db.model_dao import insert_model, get_all_models, get_model_by_provider_and_name, delete_model
+from app.db.model_dao import (
+    insert_model,
+    get_all_models,
+    get_model_by_provider_and_name,
+    delete_model,
+    get_models_by_provider,
+)
 from app.db.provider_dao import get_enabled_providers
 from app.enmus.exception import ProviderErrorEnum
 from app.exceptions.provider import ProviderError
@@ -12,6 +18,24 @@ from app.utils.logger import get_logger
 
 logger=get_logger(__name__)
 class ModelService:
+    @staticmethod
+    def _serialize_model_entries(models) -> list:
+        entries = getattr(models, "data", None)
+        if entries is None:
+            if isinstance(models, list):
+                return models
+            return []
+
+        serialized = []
+        for item in entries:
+            if hasattr(item, "model_dump"):
+                serialized.append(item.model_dump())
+            elif hasattr(item, "dict"):
+                serialized.append(item.dict())
+            else:
+                serialized.append(item)
+        return serialized
+
 
     @staticmethod
     def _build_model_config(provider: dict) -> ModelConfig:
@@ -85,10 +109,12 @@ class ModelService:
     def get_all_models_by_id(provider_id: str, verbose: bool = False):
         try:
             provider = ProviderService.get_provider_by_id(provider_id)
+            if not provider:
+                logger.error(f"[{provider_id}] 获取模型失败: provider 不存在")
+                return {"models": []}
 
             models = ModelService.get_model_list(provider["id"], verbose=verbose)
-            print(type(models))
-            serializable_models = [m.dict() for m in models.data]
+            serializable_models = ModelService._serialize_model_entries(models)
             model_list = {
                 "models": serializable_models
             }
@@ -98,23 +124,24 @@ class ModelService:
         except Exception as e:
             # print(f"[{provider_id}] 获取模型失败: {e}")
             logger.error(f"[{provider_id}] 获取模型失败: {e}")
-            return []
+            return {"models": []}
     @staticmethod
     def connect_test(id: str) -> bool:
-
         provider = ProviderService.get_provider_by_id(id)
-
         if provider:
             if not provider.get('api_key'):
                 raise ProviderError(code=ProviderErrorEnum.NOT_FOUND.code, message=ProviderErrorEnum.NOT_FOUND.message)
-            result =  OpenAICompatibleProvider.test_connection(
-                api_key=provider.get('api_key'),
-                base_url=provider.get('base_url')
-            )
-            if result:
-                return True
-            else:
-                raise ProviderError(code=ProviderErrorEnum.WRONG_PARAMETER.code,message=ProviderErrorEnum.WRONG_PARAMETER.message)
+            saved_models = get_models_by_provider(id)
+            model_candidates = [item.get("model_name") for item in saved_models if item.get("model_name")]
+            try:
+                return OpenAICompatibleProvider.test_connection(
+                    api_key=provider.get('api_key'),
+                    base_url=provider.get('base_url'),
+                    provider_name=provider.get('name'),
+                    model_candidates=model_candidates,
+                )
+            except Exception as e:
+                raise ProviderError(message=str(e), code=ProviderErrorEnum.WRONG_PARAMETER)
 
         raise ProviderError(code=ProviderErrorEnum.NOT_FOUND.code, message=ProviderErrorEnum.NOT_FOUND.message)
 

@@ -222,9 +222,11 @@ class NoteGenerator:
                 video_id=audio_meta.video_id, platform=platform, task_id=task_id
             )
 
-            # 6. 完成
-            self._update_status(task_id, TaskStatus.SUCCESS)
-            logger.info(f"笔记生成成功 (task_id={task_id})")
+            if not markdown or not str(markdown).strip():
+                raise ValueError("生成结果为空，未生成有效笔记内容")
+
+            # 6. 返回结果，最终 SUCCESS 由落盘成功后统一写入
+            logger.info(f"笔记生成流程完成，等待结果落盘 (task_id={task_id})")
             return NoteResult(
                 markdown=markdown, transcript=transcript, audio_meta=audio_meta
             )
@@ -593,7 +595,8 @@ class NoteGenerator:
             try:
                 markdown = self._insert_screenshots(markdown, video_path)
             except Exception as exc:
-                logger.warning("截图插入失败，跳过该步骤")
+                logger.error(f"截图插入失败：{exc}")
+                raise
 
         if "link" in formats:
             try:
@@ -624,8 +627,7 @@ class NoteGenerator:
                 markdown = markdown.replace(marker, f"![]({static_img_url})", 1)
             except Exception as exc:
                 logger.error(f"生成截图失败 (timestamp={ts})：{exc}")
-                # self._handle_exception(task_id, exc)
-                return None
+                raise RuntimeError(f"生成截图失败 (timestamp={ts})") from exc
         return markdown
 
     @staticmethod
