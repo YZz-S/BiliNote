@@ -4,6 +4,7 @@ from enum import Enum
 
 from app.transcriber.groq import GroqTranscriber
 from app.transcriber.whisper import WhisperTranscriber
+from app.transcriber.whisper_cpp import WhisperCppTranscriber
 from app.transcriber.bcut import BcutTranscriber
 from app.transcriber.kuaishou import KuaishouTranscriber
 from app.utils.logger import get_logger
@@ -13,6 +14,7 @@ logger = get_logger(__name__)
 class TranscriberType(str, Enum):
     FAST_WHISPER = "fast-whisper"
     MLX_WHISPER = "mlx-whisper"
+    WHISPER_CPP = "whisper-cpp"
     BCUT = "bcut"
     KUAISHOU = "kuaishou"
     GROQ = "groq"
@@ -33,6 +35,7 @@ logger.info('初始化转录服务提供器')
 _transcribers = {
     TranscriberType.FAST_WHISPER: None,
     TranscriberType.MLX_WHISPER: None,
+    TranscriberType.WHISPER_CPP: None,
     TranscriberType.BCUT: None,
     TranscriberType.KUAISHOU: None,
     TranscriberType.GROQ: None,
@@ -62,6 +65,9 @@ def get_bcut_transcriber():
 
 def get_kuaishou_transcriber():
     return _init_transcriber(TranscriberType.KUAISHOU, KuaishouTranscriber)
+
+def get_whisper_cpp_transcriber(model_size="base", device=None):
+    return _init_transcriber(TranscriberType.WHISPER_CPP, WhisperCppTranscriber, model_size=model_size, device=device)
 
 def get_mlx_whisper_transcriber(model_size="base"):
     if not MLX_WHISPER_AVAILABLE:
@@ -100,6 +106,9 @@ def get_transcriber(transcriber_type="fast-whisper", model_size="base", device="
             logger.warning("MLX Whisper 不可用，回退到 fast-whisper")
             return get_whisper_transcriber(whisper_model_size, device=device)
         return get_mlx_whisper_transcriber(whisper_model_size)
+
+    elif transcriber_enum == TranscriberType.WHISPER_CPP:
+        return get_whisper_cpp_transcriber(whisper_model_size, device=device)
 
     elif transcriber_enum == TranscriberType.BCUT:
         return get_bcut_transcriber()
